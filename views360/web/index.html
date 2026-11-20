@@ -1,0 +1,1092 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>360 Views</title>
+<style>
+:root{
+  --bg:#0f1115; --panel:#171a20; --card:#1d2128; --line:#2a2f38; --text:#e6e8ec; --muted:#8b93a1;
+  --accent:#4da3ff; --accent2:#ffb547; --danger:#ff5d5d; --ok:#4cd28a;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font:13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;display:flex;flex-direction:column;overflow:hidden}
+header{display:flex;align-items:center;gap:12px;padding:8px 16px;border-bottom:1px solid var(--line);background:var(--panel)}
+header h1{font-size:14px;margin:0;font-weight:600}
+header .file{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+header .saved{color:var(--muted);font-size:12px}
+.layout{flex:1;display:flex;min-height:0}
+.stage-col{flex:1;display:flex;flex-direction:column;min-width:0;padding:16px;gap:12px}
+#stageWrap{flex:1;min-height:0;position:relative;display:flex;align-items:center;justify-content:center}
+#stage{position:relative;background:#000;box-shadow:0 0 0 1px var(--line);touch-action:none;cursor:grab}
+#stage.dragging{cursor:grabbing}
+#gl{display:block;width:100%;height:100%}
+.box{position:absolute;outline:1px dashed rgba(255,181,71,.8);pointer-events:none}
+.box .bar{position:absolute;left:0;right:0;top:-22px;height:22px;display:flex;align-items:center;gap:6px;padding:0 8px;
+  background:var(--accent2);color:#1b1300;font-weight:600;font-size:11px;border-radius:4px 4px 0 0;pointer-events:auto;cursor:move;white-space:nowrap;overflow:hidden;width:max-content;max-width:100%}
+.box .h{position:absolute;width:12px;height:12px;background:var(--accent2);border:2px solid #1b1300;border-radius:2px;pointer-events:auto}
+.box .h.nw{left:-6px;top:-6px;cursor:nwse-resize}.box .h.ne{right:-6px;top:-6px;cursor:nesw-resize}
+.box .h.sw{left:-6px;bottom:-6px;cursor:nesw-resize}.box .h.se{right:-6px;bottom:-6px;cursor:nwse-resize}
+.box .h.n{left:50%;top:-6px;margin-left:-6px;cursor:ns-resize}.box .h.s{left:50%;bottom:-6px;margin-left:-6px;cursor:ns-resize}
+.box .h.w{top:50%;left:-6px;margin-top:-6px;cursor:ew-resize}.box .h.e{top:50%;right:-6px;margin-top:-6px;cursor:ew-resize}
+.box.hud{outline-color:rgba(76,210,138,.85)}
+.box.hud .bar{background:var(--ok);color:#03200f}
+.box.hud .h{background:var(--ok);border-color:#03200f}
+#hud2d{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+#sharpImg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+#sharpBadge{position:absolute;right:8px;top:8px;background:rgba(0,0,0,.6);padding:4px 8px;border-radius:4px;color:#cfd5de;font-size:11px;pointer-events:none}
+#sharpBadge.on{color:#4cd28a}
+.readout{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:6px 0;font-variant-numeric:tabular-nums}
+.readout div{background:#0f1218;border:1px solid var(--line);border-radius:5px;padding:3px 6px}
+.readout b{display:block;font-size:14px}
+.readout span{color:var(--muted);font-size:10px;text-transform:uppercase}
+.sub{border-top:1px solid var(--line);margin-top:8px;padding-top:6px}
+.sub > label{display:flex;gap:6px;align-items:center;font-weight:600}
+.hideGuides .box{outline:none}.hideGuides .box .h,.hideGuides .box .bar{display:none}
+#tip{position:absolute;left:8px;bottom:8px;background:rgba(0,0,0,.6);padding:4px 8px;border-radius:4px;color:#cfd5de;font-size:11px;pointer-events:none}
+.transport{display:flex;flex-direction:column;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.trow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.time{font-variant-numeric:tabular-nums;color:var(--muted);min-width:140px}
+.scrub{position:relative;height:22px}
+.scrub .range{position:absolute;top:8px;height:6px;background:rgba(77,163,255,.35);border-radius:3px;pointer-events:none}
+.scrub input{position:absolute;inset:0;width:100%;margin:0;background:transparent}
+aside{width:360px;flex:none;overflow-y:auto;border-left:1px solid var(--line);background:var(--panel);padding:12px;display:flex;flex-direction:column;gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.card h2{font-size:12px;text-transform:uppercase;letter-spacing:.06em;margin:0 0 8px;color:var(--muted);display:flex;align-items:center;gap:8px}
+.card h2 .dot{width:8px;height:8px;border-radius:50%}
+.card h2 .sp{flex:1}
+.ctl{display:grid;grid-template-columns:62px 1fr 64px;align-items:center;gap:8px;margin:4px 0}
+.ctl label{color:var(--muted)}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:4px 0}
+.grid4 label{display:flex;flex-direction:column;gap:2px;color:var(--muted);font-size:11px}
+.row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:6px 0}
+.note{color:var(--muted);font-size:11px;margin:4px 0}
+.warn{color:var(--accent2)}
+input[type=number],input[type=text],select{background:#0f1218;border:1px solid var(--line);color:var(--text);border-radius:5px;padding:3px 6px;font:inherit;width:100%;min-width:0}
+input[type=range]{width:100%;accent-color:var(--accent)}
+input[type=color]{width:34px;height:24px;border:1px solid var(--line);background:none;padding:0;border-radius:4px}
+button{background:#262b34;border:1px solid #343a45;color:var(--text);border-radius:6px;padding:5px 10px;font:inherit;cursor:pointer}
+button:hover{background:#2e3540}
+button.primary{background:var(--accent);border-color:var(--accent);color:#04121f;font-weight:600}
+button.primary:hover{filter:brightness(1.1)}
+button.danger{border-color:var(--danger);color:var(--danger)}
+button:disabled{opacity:.45;cursor:default}
+button.sm{padding:2px 8px;font-size:12px}
+.progress{height:8px;background:#0f1218;border-radius:4px;overflow:hidden;border:1px solid var(--line)}
+.progress div{height:100%;width:0;background:var(--accent);transition:width .4s}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;word-break:break-all;white-space:pre-wrap;color:#b9c1cd}
+details summary{cursor:pointer;color:var(--muted)}
+dialog{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:12px;max-width:95vw;max-height:95vh}
+dialog::backdrop{background:rgba(0,0,0,.7)}
+dialog img{display:block;max-width:90vw;max-height:80vh}
+#projDlg{width:min(720px,92vw)}
+#projDlg h3{margin:0 0 10px;font-size:15px}
+.proj{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;margin:6px 0;background:var(--card)}
+.proj.cur{border-color:var(--accent)}
+.proj .pn{font-weight:600}
+.proj .pm{color:var(--muted);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.proj .grow{flex:1;min-width:0}
+.pathbox{flex:1;min-width:0;font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:#0f1218;border:1px solid var(--line);border-radius:5px;padding:4px 6px}
+#projBtn{white-space:nowrap}
+#projName{font-weight:600;white-space:nowrap}
+kbd{background:#262b34;border:1px solid #343a45;border-radius:3px;padding:0 4px;font-size:11px}
+@media (max-width:900px){.layout{flex-direction:column;overflow-y:auto}aside{width:auto;border-left:none}.stage-col{min-height:60vh}}
+</style>
+</head>
+<body>
+<header>
+  <h1>360 Views</h1>
+  <button class="sm" id="projBtn">☰ Projects</button>
+  <span id="projName"></span>
+  <div class="file" id="fileName"></div>
+  <label class="row" style="margin:0;color:var(--muted)"><input type="checkbox" id="guides" checked> Guides</label>
+  <div class="saved" id="saved"></div>
+</header>
+<div class="layout">
+  <div class="stage-col">
+    <div id="stageWrap">
+      <div id="stage">
+        <canvas id="gl"></canvas>
+        <img id="sharpImg" alt="" hidden>
+        <canvas id="hud2d"></canvas>
+        <div id="sharpBadge" hidden></div>
+        <div id="insetBox" class="box" data-box="inset">
+          <div class="bar" data-act="move">⠿ Inset — drag to move</div>
+          <div class="h nw" data-act="nw"></div><div class="h ne" data-act="ne"></div>
+          <div class="h sw" data-act="sw"></div><div class="h se" data-act="se"></div>
+          <div class="h n" data-act="n"></div><div class="h s" data-act="s"></div>
+          <div class="h w" data-act="w"></div><div class="h e" data-act="e"></div>
+        </div>
+        <div id="tip">Drag a view to aim it · scroll to zoom · Shift+drag to roll</div>
+      </div>
+    </div>
+    <div class="transport">
+      <div class="scrub"><div class="range" id="inoutRange"></div><input type="range" id="scrub" min="0" max="1" step="0.01" value="0"></div>
+      <div class="trow">
+        <button id="playBtn" title="Space">▶ Play</button>
+        <button class="sm" id="back5" title="←">−5s</button>
+        <button class="sm" id="fwd5" title="→">+5s</button>
+        <span class="time" id="timeLbl">0:00.0 / 0:00</span>
+        <span style="flex:1"></span>
+        <button class="sm" id="setIn" title="I">Set in</button>
+        <button class="sm" id="setOut" title="O">Set out</button>
+        <button class="sm" id="clearIO">Full length</button>
+      </div>
+    </div>
+  </div>
+
+  <aside>
+    <div class="card">
+      <h2>Output</h2>
+      <div class="row">
+        <select id="resSel" style="flex:1">
+          <option value="1920x1080">1920 × 1080 (1080p)</option>
+          <option value="2560x1440">2560 × 1440 (1440p)</option>
+          <option value="3840x2160">3840 × 2160 (4K)</option>
+          <option value="1080x1920">1080 × 1920 (vertical)</option>
+          <option value="custom">Custom…</option>
+        </select>
+      </div>
+      <div class="grid4" id="customRes" hidden>
+        <label>Width<input type="number" id="outW" step="2"></label>
+        <label>Height<input type="number" id="outH" step="2"></label>
+      </div>
+      <div class="grid4">
+        <label style="grid-column:span 2">Codec<select id="codec"><option value="h264">H.264</option><option value="hevc">HEVC (H.265)</option></select></label>
+        <label style="grid-column:span 2">Bitrate (Mbps)<input type="number" id="bitrate" min="2" max="200"></label>
+      </div>
+      <div class="row"><span class="note" style="margin:0">Save to</span><span class="pathbox" id="outDir" style="flex:1"></span><button class="sm" id="outDirBtn">Change…</button></div>
+      <div class="note" id="encNote"></div>
+      <div class="sub">
+        <label><input type="checkbox" id="s360On"> 360 video (viewers can look around)</label>
+        <div class="grid4" id="s360Opts">
+          <label style="grid-column:span 2">Size<select id="s360W"><option value="7680">8K · 7680×3840</option><option value="5760">5.7K · 5760×2880</option><option value="3840">4K · 3840×1920</option></select></label>
+          <label style="grid-column:span 2">Bitrate (Mbps)<input type="number" id="s360Br" min="20" max="200"></label>
+        </div>
+        <div class="note" id="s360Note">Exports the whole sphere, tagged for YouTube and 360 players. Viewers start facing the main view's direction (its yaw). The inset, flight instruments and stabilization aren't part of 360 exports.</div>
+      </div>
+    </div>
+
+    <div class="card" id="mainCard">
+      <h2><span class="dot" style="background:var(--accent)"></span>Main view<span class="sp"></span><button class="sm" id="swapBtn" title="Swap the main and inset camera angles">⇅ Swap</button></h2>
+      <div data-view="main"></div>
+      <div class="sub">
+        <label><input type="checkbox" id="stabOn"> Stabilize with the camera's gyro</label>
+        <div class="ctl"><label title="Longer = steadier; shorter = follows the aircraft's motion more closely">Smoothing</label>
+          <input type="range" id="stabSmooth" min="0.5" max="4" step="0.5"><input type="number" id="stabSmoothN" min="0.5" max="4" step="0.5"></div>
+        <div class="note" id="stabNote">Removes rocking and shake but keeps real turns and banks. Smoothing in seconds.</div>
+      </div>
+    </div>
+
+    <div class="card" id="insetCard">
+      <h2><span class="dot" style="background:var(--accent2)"></span>Inset view<span class="sp"></span><label style="text-transform:none;letter-spacing:0;display:flex;gap:4px;align-items:center"><input type="checkbox" id="insetOn"> Show</label></h2>
+      <div data-view="insetView"></div>
+      <div class="note" style="margin-top:10px">Window (output pixels)</div>
+      <div class="grid4">
+        <label>X<input type="number" id="ix"></label>
+        <label>Y<input type="number" id="iy"></label>
+        <label>Width<input type="number" id="iw" step="2"></label>
+        <label>Height<input type="number" id="ih" step="2"></label>
+      </div>
+      <div class="row">
+        <span class="note" style="margin:0">Aspect</span>
+        <button class="sm" data-aspect="1.7778">16:9</button><button class="sm" data-aspect="1.3333">4:3</button>
+        <button class="sm" data-aspect="1">1:1</button><button class="sm" data-aspect="0.5625">9:16</button>
+      </div>
+      <div class="row">
+        <span class="note" style="margin:0">Snap</span>
+        <button class="sm" data-snap="tl">↖</button><button class="sm" data-snap="tr">↗</button>
+        <button class="sm" data-snap="bl">↙</button><button class="sm" data-snap="br">↘</button>
+        <span class="note" style="margin:0 0 0 6px">margin</span><input type="number" id="margin" value="32" style="width:60px">
+      </div>
+      <div class="row">
+        <span class="note" style="margin:0">Border</span><input type="number" id="border" min="0" max="100" style="width:60px"> px
+        <input type="color" id="borderColor">
+      </div>
+    </div>
+
+    <div class="card" id="hudCard">
+      <h2><span class="dot" style="background:var(--ok)"></span>Flight data<span class="sp"></span><label style="text-transform:none;letter-spacing:0;display:flex;gap:4px;align-items:center"><input type="checkbox" id="hudOn"> Show</label></h2>
+      <div class="note" id="hudErr" hidden></div>
+      <div class="row">
+        <button id="kmlBtn" title="KML (ForeFlight, Garmin Pilot, Sentry, Stratux…), GPX (any GPS logger or phone app) or CSV">Load track…</button><input type="file" id="kmlFile" accept=".kml,.gpx,.csv" hidden>
+        <span class="note" id="kmlName" style="margin:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">No track loaded</span>
+      </div>
+      <div class="note" id="trackInfo"></div>
+      <div class="sub">
+        <div class="note" style="margin-top:0">Sync offset (seconds) — nudge until the attitude indicator matches the horizon</div>
+        <div class="row">
+          <input type="number" id="hudOffset" step="0.1" style="width:90px">
+          <button class="sm" data-off="-60">−1m</button><button class="sm" data-off="-5">−5</button><button class="sm" data-off="-0.5">−½</button>
+          <button class="sm" data-off="0.5">+½</button><button class="sm" data-off="5">+5</button><button class="sm" data-off="60">+1m</button>
+        </div>
+        <div class="row">
+          <button class="sm primary" id="autoSync" title="Matches the horizon tilt out the front window against the track's bank angle">Auto-sync</button>
+          <span class="note" id="autoSyncMsg" style="margin:0;flex:1"></span>
+        </div>
+        <div class="row">
+          <button class="sm" id="alignStart" title="Use when you started the camera and the track recording at the same moment">Track start = playhead</button>
+          <button class="sm" id="offReset">Use camera clock</button>
+        </div>
+        <div class="note" id="syncInfo"></div>
+        <div class="readout" id="readout"></div>
+      </div>
+      <div class="sub">
+        <label><input type="checkbox" id="mapOn"> Moving map</label>
+        <div class="grid4">
+          <label>Width (NM)<input type="number" id="mapScale" min="0.5" max="500" step="0.5"></label>
+          <label style="grid-column:span 1">Orient<select id="mapOrient"><option value="track">Track up</option><option value="north">North up</option></select></label>
+          <label style="grid-column:span 2">Basemap<select id="mapBase"><option value="osm-dim">OpenStreetMap (dimmed)</option><option value="osm">OpenStreetMap</option><option value="none">None (track only)</option></select></label>
+        </div>
+        <div class="row">
+          <span class="note" style="margin:0">Flown path</span><input type="color" id="pastColor">
+          <span class="note" style="margin:0 0 0 10px">Path ahead</span><input type="color" id="futureColor">
+        </div>
+        <div class="grid4" data-rect="map"></div>
+      </div>
+      <div class="sub">
+        <label><input type="checkbox" id="adiOn"> Attitude (pitch &amp; bank)</label>
+        <div class="grid4" data-rect="adi"></div>
+      </div>
+      <div class="sub">
+        <label><input type="checkbox" id="dataOn"> Groundspeed &amp; altitude</label>
+        <div class="grid4" data-rect="data"></div>
+      </div>
+      <div class="note warn" id="hudNote"></div>
+    </div>
+
+    <div class="card">
+      <h2>Render</h2>
+      <div class="note" id="rangeLbl"></div>
+      <div class="row">
+        <button id="stillBtn" title="Render the current frame from the full-resolution source">Check full-quality frame</button>
+        <span style="flex:1"></span>
+        <label class="note" style="margin:0;display:flex;gap:4px;align-items:center" title="Renders this many pieces at once and joins them. More is faster until your computer is fully busy.">Parallel chunks <input type="number" id="chunks" min="1" max="8" step="1" style="width:52px"></label>
+        <button class="primary" id="renderBtn">Render video</button>
+      </div>
+      <div id="jobBox" hidden>
+        <div class="progress"><div id="prog"></div></div>
+        <div class="row"><span id="jobLbl" style="flex:1"></span><button class="sm danger" id="cancelBtn">Cancel</button></div>
+        <div class="mono" id="jobOut"></div>
+      </div>
+      <details style="margin-top:6px"><summary>ffmpeg command</summary><div class="mono" id="cmdBox" style="margin-top:6px"></div></details>
+    </div>
+    <div class="note">Keys: <kbd>Space</kbd> play · <kbd>←</kbd><kbd>→</kbd> 5 s (<kbd>Shift</kbd> 1 frame) · <kbd>I</kbd>/<kbd>O</kbd> in/out</div>
+  </aside>
+</div>
+
+<dialog id="projDlg">
+  <div class="row" style="margin-top:0"><h3 style="flex:1">Projects</h3><button class="sm" id="projClose">Close</button></div>
+  <div id="projList"></div>
+  <div class="card" style="margin-top:12px">
+    <h2>New project</h2>
+    <div class="row"><input type="text" id="npName" placeholder="Name, e.g. Golden Gate tour – Nov 17" style="flex:1"></div>
+    <div class="row"><button class="sm" id="npInsvBtn">Choose .insv…</button><input type="text" class="pathbox" id="npInsv" placeholder="Camera recording — choose it or paste its path" style="flex:1"></div>
+    <div class="row"><button class="sm" id="npLrvBtn">Choose .lrv…</button><input type="text" class="pathbox" id="npLrv" placeholder="Preview: found automatically next to the .insv" style="flex:1"></div>
+    <div class="note">Pick the camera's big <b>VID_…_00_….insv</b> recording (on the memory card or wherever you copied it). Its low-res <b>LRV_….lrv</b> copy, used for the live preview, is found automatically; if there isn't one, 360 Views makes a preview for you (takes a few minutes).</div>
+    <div class="row"><span class="note warn" id="npErr" style="flex:1;margin:0"></span><button class="primary" id="npCreate">Create project</button></div>
+  </div>
+</dialog>
+<dialog id="stillDlg"><div class="row" style="margin-top:0"><span id="stillLbl" class="note" style="flex:1"></span><button class="sm" id="stillClose">Close</button></div><img id="stillImg" alt="Full-quality frame"></dialog>
+<video id="vid" preload="auto" playsinline crossorigin="anonymous" hidden></video>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const vid = $("vid"), canvas = $("gl"), stage = $("stage"), insetBox = $("insetBox");
+const DEFAULTS = {
+  output: {width: 1920, height: 1080, codec: "h264", bitrate: 20},
+  main: {yaw: 180, pitch: -5, roll: 0, hfov: 100},
+  insetView: {yaw: 0, pitch: -10, roll: 0, hfov: 100},
+  inset: {enabled: true, x: 1312, y: 724, w: 576, h: 324, border: 4, borderColor: "#ffffff"},
+  hud: {
+    enabled: true, offset: 0,
+    map: {on: true, x: 32, y: 32, w: 360, h: 360, scale: 5, orient: "track", basemap: "osm-dim", pastColor: "#ff40c8", futureColor: "#7fd8ff"},
+    adi: {on: true, x: 32, y: 808, w: 240, h: 240},
+    data: {on: true, x: 296, y: 898, w: 240, h: 150}
+  },
+  stab: {on: false, smooth: 2},
+  chunks: 3,
+  out360: {on: false, width: 7680, bitrate: 100},
+  in: 0, out: null
+};
+let STAB = {smooth: null, dev: null, fps: 29.97, loading: false, error: null}, frameTime = 0;
+const HUD_EL = {map: {label: "Moving map", ar: null}, adi: {label: "Attitude", ar: 1}, data: {label: "GS / ALT", ar: 1.6}};
+let TRACK = null, VIDEO_START = null;
+function makeBox(name, label) {
+  const b = document.createElement("div");
+  b.className = "box hud"; b.dataset.box = name;
+  b.innerHTML = `<div class="bar" data-act="move">⠿ ${label}</div>` + ["nw","ne","sw","se","n","s","w","e"].map(h => `<div class="h ${h}" data-act="${h}"></div>`).join("");
+  $("stage").insertBefore(b, $("tip"));
+  return b;
+}
+const hudBoxes = Object.fromEntries(Object.entries(HUD_EL).map(([k, v]) => [k, makeBox(k, v.label)]));
+let S = structuredClone(DEFAULTS);
+let INFO = null, dirty = true, PX_PER_DEG = 0;
+
+/* ---------------- math (matches ffmpeg v360: R = Ry(yaw)·Rx(pitch)·Rz(roll), +pitch looks up) ---------------- */
+const rad = d => d * Math.PI / 180, deg = r => r * 180 / Math.PI;
+function mul(a, b) { const r = []; for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) r[i*3+j] = a[i*3]*b[j] + a[i*3+1]*b[3+j] + a[i*3+2]*b[6+j]; return r; }
+function rotMat(v) {
+  const cy = Math.cos(rad(v.yaw)), sy = Math.sin(rad(v.yaw)), cp = Math.cos(rad(v.pitch)), sp = Math.sin(rad(v.pitch)), cr = Math.cos(rad(v.roll)), sr = Math.sin(rad(v.roll));
+  const Ry = [cy,0,sy, 0,1,0, -sy,0,cy], Rx = [1,0,0, 0,cp,-sp, 0,sp,cp], Rz = [cr,-sr,0, sr,cr,0, 0,0,1];
+  return mul(mul(Ry, Rx), Rz); // row-major
+}
+const vfovOf = (hfov, w, h) => deg(2 * Math.atan(Math.tan(rad(hfov) / 2) * h / w));
+const wrap180 = a => { const r = ((a + 180) % 360 + 360) % 360 - 180; return r === -180 ? 180 : r; };
+
+/* ---------------- WebGL ---------------- */
+const gl = canvas.getContext("webgl2", {antialias: false, preserveDrawingBuffer: false});
+if (!gl) document.body.innerHTML = "<p style='padding:20px'>This browser has no WebGL2 support.</p>";
+const VS = `#version 300 es
+void main(){ vec2 p = vec2((gl_VertexID<<1)&2, gl_VertexID&2); gl_Position = vec4(p*2.0-1.0,0.0,1.0); }`;
+// Stitches the camera's side-by-side fisheye preview (.lrv: [cockpit lens | forward lens]) on the fly with
+// the same calibrated lens model the renderer uses (omnidirectional model + distortion, per-lens alignment).
+const FS = `#version 300 es
+precision highp float;
+uniform sampler2D tex; uniform mat3 R; uniform vec4 rect; uniform vec2 tanF; uniform float canvasH;
+uniform mat3 Mt[2]; uniform float xi[2], fx[2], fy[2], cx[2], cy[2], k1[2], k2[2], k3[2], p1[2], p2[2], crop[2], scl[2];
+uniform vec2 lrv; uniform float N, limitDeg, band;
+out vec4 o;
+vec3 lens(int k, vec3 d, out float th){
+  vec3 c = Mt[k] * d;
+  th = degrees(acos(clamp(c.z, -1.0, 1.0)));
+  vec2 m = c.xy / (c.z + xi[k]);
+  float r2 = dot(m, m), rad = 1.0 + k1[k]*r2 + k2[k]*r2*r2 + k3[k]*r2*r2*r2;
+  float dx = m.x*rad + 2.0*p1[k]*m.x*m.y + p2[k]*(r2 + 2.0*m.x*m.x);
+  float dy = m.y*rad + p1[k]*(r2 + 2.0*m.y*m.y) + 2.0*p2[k]*m.x*m.y;
+  vec2 uv = vec2((fx[k]*dx + cx[k] - crop[k]) * scl[k], (fy[k]*dy + cy[k]) * scl[k]);   // full-res lens pixels
+  float s = lrv.y / N, half_ = lrv.x * 0.5, off = k == 0 ? half_ : 0.0;
+  vec2 xy = (uv + 0.5) * s;                                                           // preview pixels
+  xy.x = clamp(xy.x, 0.5, half_ - 0.5) + off;
+  return texture(tex, xy / lrv).rgb;
+}
+void main(){
+  vec2 p = vec2(gl_FragCoord.x - rect.x, (canvasH - gl_FragCoord.y) - rect.y) / rect.zw * 2.0 - 1.0;
+  vec3 d = R * normalize(vec3(p.x * tanF.x, p.y * tanF.y, 1.0));
+  float t0, t1;
+  vec3 c0 = lens(0, d, t0), c1 = lens(1, d, t1);
+  float w1 = clamp(((t0 - t1) * 0.5) / (2.0 * band) + 0.5, 0.0, 1.0);
+  w1 = t1 > limitDeg ? 0.0 : (t0 > limitDeg ? 1.0 : w1);
+  o = vec4(mix(c0, c1, w1), 1.0);
+}`;
+function sh(type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw gl.getShaderInfoLog(s); return s; }
+const prog = gl.createProgram();
+gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog);
+gl.useProgram(prog);
+const U = n => gl.getUniformLocation(prog, n);
+const uR = U("R"), uRect = U("rect"), uTan = U("tanF"), uCH = U("canvasH");
+function setLensUniforms(L) {
+  const arr = (key, f) => new Float32Array(L.lenses.map(f || (l => l[key])));
+  gl.uniformMatrix3fv(U("Mt"), false, new Float32Array([...L.lenses[0].M.flat(), ...L.lenses[1].M.flat()]));  // = transpose(M)
+  for (const k of ["xi", "fx", "fy", "cx", "cy", "crop"]) gl.uniform1fv(U(k), arr(k));
+  gl.uniform1fv(U("scl"), arr(null, l => l.scale));
+  gl.uniform1fv(U("k1"), arr(null, l => l.k[0])); gl.uniform1fv(U("k2"), arr(null, l => l.k[1])); gl.uniform1fv(U("k3"), arr(null, l => l.k[2]));
+  gl.uniform1fv(U("p1"), arr(null, l => l.p[0])); gl.uniform1fv(U("p2"), arr(null, l => l.p[1]));
+  gl.uniform2f(U("lrv"), L.lrv[0], L.lrv[1]); gl.uniform1f(U("N"), L.N);
+  gl.uniform1f(U("limitDeg"), L.limit); gl.uniform1f(U("band"), L.band);
+  dirty = true;
+}
+gl.bindVertexArray(gl.createVertexArray());
+const tex = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, tex);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0,0,0,255]));
+let haveFrame = false;
+function upload() { if (vid.readyState >= 2) { gl.bindTexture(gl.TEXTURE_2D, tex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, vid); haveFrame = true; dirty = true; } }
+
+let scaleK = 1; // canvas device px per output px
+function rodrigues(x, y, z) {   // rotation vector -> row-major 3x3
+  const a = Math.hypot(x, y, z);
+  if (a < 1e-12) return [1,0,0, 0,1,0, 0,0,1];
+  const kx = x / a, ky = y / a, kz = z / a, s = Math.sin(a), c = 1 - Math.cos(a);
+  return [1 - c*(ky*ky + kz*kz), -s*kz + c*kx*ky, s*ky + c*kx*kz,
+          s*kz + c*kx*ky, 1 - c*(kx*kx + kz*kz), -s*kx + c*ky*kz,
+          -s*ky + c*kx*kz, s*kx + c*ky*kz, 1 - c*(kx*kx + ky*ky)];
+}
+function stabMatrix() {
+  if (!S.stab.on || !STAB.dev || STAB.smooth !== S.stab.smooth) return null;
+  const n = STAB.dev.length / 3, k = Math.max(0, Math.min(n - 1, Math.round(frameTime * STAB.fps)));
+  return rodrigues(STAB.dev[3*k], STAB.dev[3*k+1], STAB.dev[3*k+2]);
+}
+function drawView(view, x, y, w, h, pre) {
+  if (w < 1 || h < 1) return;
+  const cx = Math.round(x), cy = Math.round(y), cw = Math.round(w), ch = Math.round(h);
+  gl.viewport(cx, canvas.height - cy - ch, cw, ch);
+  gl.scissor(cx, canvas.height - cy - ch, cw, ch);
+  const m = pre ? mul(pre, rotMat(view)) : rotMat(view);
+  gl.uniformMatrix3fv(uR, false, [m[0],m[3],m[6], m[1],m[4],m[7], m[2],m[5],m[8]]);
+  gl.uniform4f(uRect, cx, cy, cw, ch);
+  const tx = Math.tan(rad(view.hfov) / 2);
+  gl.uniform2f(uTan, tx, tx * h / w);
+  gl.uniform1f(uCH, canvas.height);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+}
+function draw() {
+  dirty = false;
+  gl.disable(gl.SCISSOR_TEST); gl.viewport(0, 0, canvas.width, canvas.height);
+  gl.clearColor(0, 0, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.enable(gl.SCISSOR_TEST);
+  const k = scaleK;
+  drawView(S.main, 0, 0, canvas.width, canvas.height, stabMatrix());
+  const I = S.inset;
+  if (I.enabled) {
+    if (I.border > 0) {
+      const b = I.border, c = I.borderColor;
+      const bx = Math.round((I.x - b) * k), by = Math.round((I.y - b) * k), bw = Math.round((I.w + 2*b) * k), bh = Math.round((I.h + 2*b) * k);
+      gl.scissor(bx, canvas.height - by - bh, bw, bh);
+      gl.clearColor(parseInt(c.slice(1,3),16)/255, parseInt(c.slice(3,5),16)/255, parseInt(c.slice(5,7),16)/255, 1);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+    }
+    drawView(S.insetView, I.x * k, I.y * k, I.w * k, I.h * k);
+  }
+}
+function loop() { if (dirty) draw(); requestAnimationFrame(loop); }
+if ("requestVideoFrameCallback" in HTMLVideoElement.prototype) {
+  const onFrame = (now, meta) => { frameTime = meta && meta.mediaTime != null ? meta.mediaTime : vid.currentTime; upload(); vid.requestVideoFrameCallback(onFrame); };
+  vid.requestVideoFrameCallback(onFrame);
+} else {
+  (function poll() { if (!vid.paused) upload(); requestAnimationFrame(poll); })();
+}
+vid.addEventListener("loadeddata", upload);
+vid.addEventListener("seeked", () => { frameTime = vid.currentTime; upload(); });
+if (!("requestVideoFrameCallback" in HTMLVideoElement.prototype)) vid.addEventListener("timeupdate", () => { frameTime = vid.currentTime; });
+
+/* ---------------- layout ---------------- */
+function layout() {
+  const wrap = $("stageWrap").getBoundingClientRect();
+  const ar = S.output.width / S.output.height;
+  let w = wrap.width, h = w / ar;
+  if (h > wrap.height) { h = wrap.height; w = h * ar; }
+  w = Math.max(50, Math.floor(w)); h = Math.max(50, Math.floor(h));
+  stage.style.width = w + "px"; stage.style.height = h + "px";
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
+  scaleK = canvas.width / S.output.width;
+  $("hud2d").width = canvas.width; $("hud2d").height = canvas.height;
+  placeInsetBox();
+  drawHud();
+  dirty = true;
+  sharpInvalidate();
+}
+
+/* ---------------- sharp when paused: full-resolution frame from the camera file ---------------- */
+let sharpTimer = null, sharpBusy = false, sharpAgain = false, sharpUrl = null;
+function sharpParams() {
+  const k = scaleK, I = S.inset, ev = x => Math.max(2, Math.round(x / 2) * 2);
+  return {...renderParams(), time: +vid.currentTime.toFixed(3),
+    output: {...S.output, width: ev(canvas.width), height: ev(canvas.height)},
+    inset: {...I, x: Math.round(I.x * k), y: Math.round(I.y * k), w: ev(I.w * k), h: ev(I.h * k),
+            border: I.border > 0 ? Math.max(1, Math.round(I.border * k)) : 0},
+    hud: {enabled: false}, out360: {on: false}};  // instruments stay as the live overlay; preview is the flat view
+}
+function sharpBadge(text, on) { const b = $("sharpBadge"); b.hidden = !text; b.textContent = text || ""; b.classList.toggle("on", !!on); }
+function sharpInvalidate() {
+  $("sharpImg").hidden = true;
+  clearTimeout(sharpTimer);
+  if (!vid.paused || drag || scrubbing || !INFO) { sharpBadge(vid.paused ? "" : "Live preview (low-res)"); return; }
+  sharpBadge("Sharpening…");
+  sharpTimer = setTimeout(sharpFetch, 450);
+}
+async function sharpFetch() {
+  if (sharpBusy) { sharpAgain = true; return; }
+  const params = sharpParams(), key = JSON.stringify(params);
+  sharpBusy = true; sharpAgain = false;
+  try {
+    const r = await fetch("/api/still", {method: "POST", body: key});
+    if (!r.ok) { const j = await r.json().catch(() => ({})); sharpBadge(/not found/.test(j.error || "") ? "Full quality needs the camera file" : "Live preview (low-res)"); return; }
+    const blob = await r.blob();
+    if (JSON.stringify(sharpParams()) !== key || !vid.paused) return;   // something changed meanwhile: drop it
+    if (sharpUrl) URL.revokeObjectURL(sharpUrl);
+    sharpUrl = URL.createObjectURL(blob);
+    const img = $("sharpImg");
+    img.onload = () => { if (JSON.stringify(sharpParams()) === key && vid.paused) { img.hidden = false; sharpBadge("Full quality", true); } };
+    img.src = sharpUrl;
+  } catch (e) { sharpBadge("Live preview (low-res)"); }
+  finally {
+    sharpBusy = false;
+    if (sharpAgain || (vid.paused && $("sharpImg").hidden && JSON.stringify(sharpParams()) !== key)) sharpInvalidate();
+  }
+}
+function cssK() { return stage.clientWidth / S.output.width; }
+function placeBox(el, R, show) {
+  const k = cssK();
+  el.hidden = !show;
+  Object.assign(el.style, {left: R.x * k + "px", top: R.y * k + "px", width: R.w * k + "px", height: R.h * k + "px"});
+}
+function placeInsetBox() {
+  placeBox(insetBox, S.inset, S.inset.enabled);
+  for (const n in hudBoxes) placeBox(hudBoxes[n], S.hud[n], hudActive() && S.hud[n].on);
+}
+const rectOf = box => box === "inset" ? S.inset : S.hud[box];
+const hudActive = () => !!(TRACK && S.hud.enabled && (S.hud.map.on || S.hud.adi.on || S.hud.data.on));
+new ResizeObserver(layout).observe($("stageWrap"));
+
+/* ---------------- controls ---------------- */
+const VIEW_FIELDS = [
+  {key: "yaw", label: "Yaw", min: -180, max: 180, step: 0.1, unit: "°"},
+  {key: "pitch", label: "Pitch", min: -90, max: 90, step: 0.1, unit: "°"},
+  {key: "roll", label: "Roll", min: -180, max: 180, step: 0.1, unit: "°"},
+  {key: "hfov", label: "Zoom (FOV)", min: 10, max: 170, step: 0.1, unit: "°"},
+];
+const viewUI = {};
+for (const el of document.querySelectorAll("[data-view]")) {
+  const vk = el.dataset.view; viewUI[vk] = {};
+  for (const f of VIEW_FIELDS) {
+    const row = document.createElement("div"); row.className = "ctl";
+    row.innerHTML = `<label title="${f.key === "hfov" ? "Horizontal field of view — smaller is more zoomed in" : ""}">${f.label}</label><input type="range" min="${f.min}" max="${f.max}" step="${f.step}"><input type="number" min="${f.min}" max="${f.max}" step="${f.step}">`;
+    const [r, n] = row.querySelectorAll("input");
+    const set = val => { val = Math.min(f.max, Math.max(f.min, +val)); if (!isFinite(val)) return; S[vk][f.key] = val; changed(); };
+    r.addEventListener("input", () => set(r.value)); n.addEventListener("change", () => set(n.value));
+    viewUI[vk][f.key] = {r, n};
+    el.appendChild(row);
+  }
+  const info = document.createElement("div"); info.className = "note"; el.appendChild(info); viewUI[vk].info = info;
+  const reset = document.createElement("button"); reset.className = "sm"; reset.textContent = "Reset";
+  reset.onclick = () => { S[vk] = structuredClone(DEFAULTS[vk]); changed(); };
+  info.after(reset);
+}
+
+function viewDims(vk) { return vk === "main" ? [S.output.width, S.output.height] : [S.inset.w, S.inset.h]; }
+function syncUI() {
+  for (const vk of ["main", "insetView"]) {
+    for (const f of VIEW_FIELDS) {
+      const v = +S[vk][f.key].toFixed(1), u = viewUI[vk][f.key];
+      u.r.value = v; if (document.activeElement !== u.n) u.n.value = v;
+    }
+    const [w, h] = viewDims(vk), hf = S[vk].hfov;
+    const srcAcross = PX_PER_DEG * hf, ratio = srcAcross ? w / srcAcross : 0;
+    let txt = `Vertical FOV ${vfovOf(hf, w, h).toFixed(1)}° · ${w}×${h} px`;
+    if (ratio > 1.15) txt += ` · <span class="warn">upscaled ${ratio.toFixed(1)}× — will look soft; widen zoom or lower output size</span>`;
+    else if (ratio) txt += ` · sharp (source ${Math.round(srcAcross)} px across)`;
+    viewUI[vk].info.innerHTML = txt;
+  }
+  const I = S.inset;
+  $("insetOn").checked = I.enabled;
+  for (const [id, k] of [["ix","x"],["iy","y"],["iw","w"],["ih","h"],["border","border"]]) if (document.activeElement !== $(id)) $(id).value = Math.round(I[k]);
+  $("borderColor").value = I.borderColor;
+  const res = S.output.width + "x" + S.output.height;
+  const known = [...$("resSel").options].some(o => o.value === res);
+  if (!$("customRes").hidden && !known) $("resSel").value = "custom"; else $("resSel").value = known ? res : "custom";
+  $("customRes").hidden = $("resSel").value !== "custom";
+  $("outW").value = S.output.width; $("outH").value = S.output.height;
+  $("codec").value = S.output.codec; $("bitrate").value = S.output.bitrate;
+  if (document.activeElement !== $("chunks")) $("chunks").value = S.chunks;
+  $("s360On").checked = S.out360.on; $("s360W").value = S.out360.width;
+  if (document.activeElement !== $("s360Br")) $("s360Br").value = S.out360.bitrate;
+  $("s360Opts").hidden = !S.out360.on;
+  for (const id of ["resSel", "outW", "outH", "codec", "bitrate"]) $(id).disabled = S.out360.on;
+  $("renderBtn").textContent = S.out360.on ? "Render 360 video" : "Render video";
+  $("stabOn").checked = S.stab.on; $("stabSmooth").value = S.stab.smooth;
+  if (document.activeElement !== $("stabSmoothN")) $("stabSmoothN").value = S.stab.smooth;
+  $("stabSmooth").disabled = $("stabSmoothN").disabled = !S.stab.on;
+  for (const el of document.querySelectorAll("#insetCard [data-view] input, [data-aspect], [data-snap], #ix, #iy, #iw, #ih, #border, #borderColor, #margin")) el.disabled = !I.enabled;
+  syncRange();
+}
+
+let saveTimer = null, cmdTimer = null;
+function changed(opts = {}) {
+  S.main.yaw = wrap180(S.main.yaw); S.insetView.yaw = wrap180(S.insetView.yaw);
+  S.main.roll = wrap180(S.main.roll); S.insetView.roll = wrap180(S.insetView.roll);
+  placeInsetBox(); syncUI(); syncHudUI(); dirty = true;
+  drawHud(); requestHud(); sharpInvalidate();
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => fetch("/api/settings", {method: "POST", body: JSON.stringify(S)}).then(() => { $("saved").textContent = "Saved " + new Date().toLocaleTimeString(); }).catch(() => { $("saved").textContent = "Not saved (server offline?)"; }), 400);
+  clearTimeout(cmdTimer); cmdTimer = setTimeout(refreshCmd, 600);
+}
+function refreshCmd() { fetch("/api/command", {method: "POST", body: JSON.stringify(renderParams())}).then(r => r.json()).then(j => $("cmdBox").textContent = j.command).catch(() => {}); }
+
+/* output */
+function setOutput(w, h) {
+  w = Math.max(160, Math.round(w / 2) * 2); h = Math.max(90, Math.round(h / 2) * 2);
+  const sx = w / S.output.width, sy = h / S.output.height, I = S.inset;
+  // keep the inset in the same relative place, scaled uniformly by width
+  const s = Math.min(sx, sy);
+  I.w = even(I.w * s); I.h = even(I.h * s); I.x = Math.round(I.x * sx); I.y = Math.round(I.y * sy);
+  I.x = Math.min(I.x, w - I.w); I.y = Math.min(I.y, h - I.h);
+  for (const n in HUD_EL) {
+    const e = S.hud[n];
+    e.w = even(e.w * s); e.h = even(e.h * s); e.x = Math.round(e.x * sx); e.y = Math.round(e.y * sy);
+    e.x = Math.max(0, Math.min(e.x, w - e.w)); e.y = Math.max(0, Math.min(e.y, h - e.h));
+  }
+  S.output.width = w; S.output.height = h;
+  S.output.bitrate = w * h >= 3840 * 2160 * 0.9 ? 50 : w * h >= 2560 * 1440 * 0.9 ? 30 : 20;
+  layout(); changed();
+}
+const even = x => Math.max(16, Math.round(x / 2) * 2);
+$("resSel").onchange = e => { if (e.target.value === "custom") { $("customRes").hidden = false; return; } const [w, h] = e.target.value.split("x").map(Number); setOutput(w, h); };
+$("outW").onchange = () => setOutput(+$("outW").value, S.output.height);
+$("outH").onchange = () => setOutput(S.output.width, +$("outH").value);
+$("codec").onchange = e => { S.output.codec = e.target.value; changed(); };
+$("bitrate").onchange = e => { S.output.bitrate = Math.min(200, Math.max(2, +e.target.value || 20)); changed(); };
+
+/* inset */
+$("insetOn").onchange = e => { S.inset.enabled = e.target.checked; changed(); };
+for (const [id, k] of [["ix","x"],["iy","y"],["iw","w"],["ih","h"]]) $(id).onchange = e => { let v = +e.target.value; if (!isFinite(v)) return; if (k === "w" || k === "h") v = even(v); S.inset[k] = v; changed(); };
+$("border").onchange = e => { S.inset.border = Math.min(100, Math.max(0, Math.round(+e.target.value || 0))); changed(); };
+$("borderColor").oninput = e => { S.inset.borderColor = e.target.value; changed(); };
+for (const b of document.querySelectorAll("[data-aspect]")) b.onclick = () => { S.inset.h = even(S.inset.w / +b.dataset.aspect); changed(); };
+for (const b of document.querySelectorAll("[data-snap]")) b.onclick = () => {
+  const m = +$("margin").value || 0, I = S.inset, p = b.dataset.snap, off = m + I.border;
+  I.x = p.includes("l") ? off : S.output.width - I.w - off;
+  I.y = p.includes("t") ? off : S.output.height - I.h - off;
+  changed();
+};
+async function loadStab() {
+  if (!S.stab.on || STAB.loading || STAB.smooth === S.stab.smooth) return;
+  STAB.loading = true; const want = S.stab.smooth;
+  $("stabNote").textContent = "Loading gyro data… (about 20 s the first time)";
+  try {
+    const r = await fetch("/api/stab?smooth=" + want);
+    if (!r.ok) throw new Error((await r.json()).error);
+    STAB.fps = parseFloat(r.headers.get("X-Fps")) || 29.97;
+    STAB.dev = new Float32Array(await r.arrayBuffer()); STAB.smooth = want; STAB.error = null;
+    $("stabNote").textContent = "Removes rocking and shake but keeps real turns and banks. Smoothing in seconds.";
+  } catch (e) { STAB.error = e.message; $("stabNote").innerHTML = `<span class="warn">${e.message}</span>`; S.stab.on = false; syncUI(); }
+  finally { STAB.loading = false; dirty = true; if (S.stab.on && STAB.smooth !== S.stab.smooth && !STAB.error) loadStab(); }
+}
+$("s360On").onchange = e => { S.out360.on = e.target.checked; changed(); };
+$("s360W").onchange = e => { S.out360.width = +e.target.value; S.out360.bitrate = {7680: 100, 5760: 70, 3840: 40}[e.target.value] || 100; changed(); };
+$("s360Br").onchange = e => { S.out360.bitrate = Math.min(200, Math.max(20, Math.round(+e.target.value) || 100)); changed(); };
+$("chunks").onchange = e => { S.chunks = Math.min(8, Math.max(1, Math.round(+e.target.value) || 3)); changed(); postJ("/api/prefs", {chunks: S.chunks}).catch(() => {}); };
+$("stabOn").onchange = e => { S.stab.on = e.target.checked; changed(); loadStab(); };
+const setSmooth = v => { S.stab.smooth = Math.min(4, Math.max(0.5, Math.round(+v * 2) / 2 || 2)); changed(); loadStab(); };
+$("stabSmooth").oninput = e => setSmooth(e.target.value);
+$("stabSmoothN").onchange = e => setSmooth(e.target.value);
+$("swapBtn").onclick = () => { [S.main, S.insetView] = [S.insetView, S.main]; changed(); };
+$("guides").onchange = e => document.body.classList.toggle("hideGuides", !e.target.checked);
+
+/* ---------------- stage interaction ---------------- */
+function viewAt(ev) {
+  const r = stage.getBoundingClientRect(), k = cssK(), x = (ev.clientX - r.left) / k, y = (ev.clientY - r.top) / k, I = S.inset;
+  return I.enabled && x >= I.x && x <= I.x + I.w && y >= I.y && y <= I.y + I.h ? "insetView" : "main";
+}
+let drag = null;
+stage.addEventListener("pointerdown", ev => {
+  if (ev.button !== 0) return;
+  const act = ev.target.dataset && ev.target.dataset.act;
+  stage.setPointerCapture(ev.pointerId);
+  if (act) {
+    const box = ev.target.closest(".box").dataset.box;
+    drag = {type: "box", box, act, x: ev.clientX, y: ev.clientY, start: {...rectOf(box)}};
+  }
+  else { const vk = viewAt(ev); drag = {type: "view", vk, x: ev.clientX, y: ev.clientY, start: {...S[vk]}}; }
+  stage.classList.add("dragging");
+  ev.preventDefault();
+});
+stage.addEventListener("pointermove", ev => {
+  if (!drag) return;
+  const k = cssK(), dx = ev.clientX - drag.x, dy = ev.clientY - drag.y;
+  if (drag.type === "view") {
+    const v = S[drag.vk], st = drag.start, [w, h] = viewDims(drag.vk);
+    if (ev.shiftKey) { v.roll = st.roll + dx * 0.25; }
+    else {
+      v.yaw = st.yaw - dx / k * st.hfov / w;
+      v.pitch = Math.max(-90, Math.min(90, st.pitch + dy / k * vfovOf(st.hfov, w, h) / h));
+    }
+  } else {
+    const I = rectOf(drag.box), st = drag.start, ox = dx / k, oy = dy / k, a = drag.act, minS = 32;
+    const fixedAr = drag.box !== "inset" ? HUD_EL[drag.box].ar : null;
+    if (a === "move") { I.x = Math.round(st.x + ox); I.y = Math.round(st.y + oy); }
+    else {
+      let x0 = st.x, y0 = st.y, x1 = st.x + st.w, y1 = st.y + st.h;
+      if (a.includes("w")) x0 = Math.min(x1 - minS, st.x + ox);
+      if (a.includes("e")) x1 = Math.max(x0 + minS, x1 + ox);
+      if (a.includes("n")) y0 = Math.min(y1 - minS, st.y + oy);
+      if (a.includes("s")) y1 = Math.max(y0 + minS, y1 + oy);
+      if (fixedAr || (ev.shiftKey && a.length === 2)) { // keep aspect
+        const ar = fixedAr || st.w / st.h;
+        if (a === "n" || a === "s") { const nw = (y1 - y0) * ar; x1 = x0 + nw; }
+        else { const nh = (x1 - x0) / ar; if (a.includes("n")) y0 = y1 - nh; else y1 = y0 + nh; }
+      }
+      I.w = even(x1 - x0); I.h = even(y1 - y0);
+      I.x = Math.round(a.includes("w") ? x1 - I.w : x0); I.y = Math.round(a.includes("n") ? y1 - I.h : y0);
+    }
+  }
+  changed();
+});
+const endDrag = () => { drag = null; stage.classList.remove("dragging"); sharpInvalidate(); };
+stage.addEventListener("pointerup", endDrag); stage.addEventListener("pointercancel", endDrag);
+stage.addEventListener("wheel", ev => {
+  ev.preventDefault();
+  const vk = viewAt(ev), v = S[vk];
+  v.hfov = Math.max(10, Math.min(170, v.hfov * Math.exp(ev.deltaY * 0.0015)));
+  changed();
+}, {passive: false});
+
+/* ---------------- transport ---------------- */
+const fmt = (t, frac = true) => { if (!isFinite(t)) t = 0; const m = Math.floor(t / 60), s = t - m * 60; return m + ":" + (frac ? s.toFixed(1).padStart(4, "0") : String(Math.floor(s)).padStart(2, "0")); };
+const dur = () => INFO ? INFO.duration : (vid.duration || 0);
+const outT = () => S.out == null ? dur() : S.out;
+function syncTime() {
+  $("timeLbl").textContent = fmt(vid.currentTime) + " / " + fmt(dur(), false);
+  if (!scrubbing) $("scrub").value = vid.currentTime;
+  $("playBtn").textContent = vid.paused ? "▶ Play" : "❚❚ Pause";
+}
+function syncRange() {
+  const d = dur() || 1, a = S.in / d * 100, b = outT() / d * 100;
+  Object.assign($("inoutRange").style, {left: a + "%", width: Math.max(0, b - a) + "%"});
+  $("rangeLbl").textContent = `Range ${fmt(S.in)} → ${fmt(outT())}  (${fmt(outT() - S.in)})`;
+}
+let scrubbing = false;
+$("scrub").addEventListener("input", e => { scrubbing = true; vid.currentTime = +e.target.value; });
+$("scrub").addEventListener("change", () => { scrubbing = false; sharpInvalidate(); });
+vid.addEventListener("timeupdate", syncTime); vid.addEventListener("play", syncTime); vid.addEventListener("pause", syncTime);
+vid.addEventListener("seeked", () => requestHud()); vid.addEventListener("play", () => requestHud());
+for (const ev of ["seeked", "pause", "play"]) vid.addEventListener(ev, sharpInvalidate);
+vid.addEventListener("timeupdate", () => { if (vid.paused) return; syncSyncInfo(); });
+const toggle = () => vid.paused ? vid.play() : vid.pause();
+$("playBtn").onclick = toggle;
+const seek = d => { vid.currentTime = Math.max(0, Math.min(dur(), vid.currentTime + d)); };
+$("back5").onclick = () => seek(-5); $("fwd5").onclick = () => seek(5);
+const setIn = () => { S.in = vid.currentTime; if (S.out != null && S.out <= S.in) S.out = null; changed(); };
+const setOut = () => { S.out = vid.currentTime; if (S.out <= S.in) S.in = 0; changed(); };
+$("setIn").onclick = setIn; $("setOut").onclick = setOut;
+$("clearIO").onclick = () => { S.in = 0; S.out = null; changed(); };
+document.addEventListener("keydown", ev => {
+  if (ev.target.closest("input,select,textarea") && ev.target.type !== "range" && ev.target.type !== "checkbox") return;
+  const fps = INFO ? INFO.fps : 30;
+  if (ev.code === "Space") { ev.preventDefault(); toggle(); }
+  else if (ev.key === "ArrowLeft") { ev.preventDefault(); seek(ev.shiftKey ? -1 / fps : -5); }
+  else if (ev.key === "ArrowRight") { ev.preventDefault(); seek(ev.shiftKey ? 1 / fps : 5); }
+  else if (ev.key === "i" || ev.key === "I") setIn();
+  else if (ev.key === "o" || ev.key === "O") setOut();
+});
+
+/* ---------------- render ---------------- */
+function renderParams() { return {...S, out: outT()}; }
+$("stillBtn").onclick = async () => {
+  const btn = $("stillBtn"); btn.disabled = true; btn.textContent = "Rendering frame…";
+  try {
+    const r = await fetch("/api/still", {method: "POST", body: JSON.stringify({...renderParams(), time: vid.currentTime})});
+    if (!r.ok) throw new Error((await r.json()).error || r.statusText);
+    const url = URL.createObjectURL(await r.blob());
+    $("stillImg").src = url; $("stillLbl").textContent = `Full-quality frame at ${fmt(vid.currentTime)} — ${S.output.width}×${S.output.height}, exactly what the render produces`;
+    $("stillDlg").showModal();
+  } catch (e) { alertBox("Couldn't render frame: " + e.message); }
+  finally { btn.disabled = false; btn.textContent = "Check full-quality frame"; }
+};
+$("stillClose").onclick = () => $("stillDlg").close();
+function alertBox(msg) { $("jobBox").hidden = false; $("jobLbl").textContent = ""; $("jobOut").textContent = msg; }
+let pollTimer = null;
+$("renderBtn").onclick = async () => {
+  const r = await fetch("/api/render", {method: "POST", body: JSON.stringify(renderParams())});
+  const j = await r.json();
+  if (!j.ok) { alertBox(j.message); return; }
+  poll();
+};
+$("cancelBtn").onclick = () => fetch("/api/render/cancel", {method: "POST"}).then(poll);
+async function poll() {
+  clearTimeout(pollTimer);
+  let j; try { j = await (await fetch("/api/render")).json(); } catch { return; }
+  const box = $("jobBox");
+  if (j.status === "idle") { box.hidden = true; $("renderBtn").disabled = false; return; }
+  box.hidden = false;
+  const pct = j.duration ? Math.min(100, j.done / j.duration * 100) : 0;
+  $("prog").style.width = pct + "%";
+  $("prog").style.background = j.status === "error" ? "var(--danger)" : j.status === "done" ? "var(--ok)" : "var(--accent)";
+  const busy = j.status === "running" || j.status === "finishing";
+  $("renderBtn").disabled = busy;
+  $("cancelBtn").hidden = !busy;
+  if (j.status === "finishing") {
+    $("jobLbl").textContent = `Joining ${j.chunks || ""} chunks and adding audio…`; $("jobOut").textContent = j.output;
+    pollTimer = setTimeout(poll, 1000);
+  } else if (j.status === "running") {
+    const el = (Date.now() / 1000 - j.started), eta = j.done > 1 ? el / j.done * (j.duration - j.done) : null;
+    $("jobLbl").textContent = `Rendering ${pct.toFixed(1)}%` + (j.speed ? ` · ${j.speed}` : "") + (eta ? ` · ~${fmt(eta, false)} left` : "");
+    $("jobOut").textContent = j.output;
+    pollTimer = setTimeout(poll, 1000);
+  } else if (j.status === "done") {
+    $("jobLbl").textContent = `Done in ${fmt(j.finished - j.started, false)}`; $("jobOut").textContent = "Saved to " + j.output;
+  } else if (j.status === "cancelled") {
+    $("jobLbl").textContent = "Cancelled"; $("jobOut").textContent = "";
+  } else {
+    $("jobLbl").textContent = "Render failed"; $("jobOut").textContent = j.error || "";
+  }
+}
+
+/* ---------------- flight-data overlay ---------------- */
+const pad2 = n => String(n).padStart(2, "0");
+const utcStr = (t, withDate) => { const d = new Date(t * 1000); return (withDate ? d.toISOString().slice(0, 10) + " " : "") + pad2(d.getUTCHours()) + ":" + pad2(d.getUTCMinutes()) + ":" + pad2(d.getUTCSeconds()) + "Z"; };
+const vStart = () => VIDEO_START != null ? VIDEO_START : (TRACK ? TRACK.start : 0);
+for (const n in HUD_EL) {
+  const g = document.querySelector(`[data-rect="${n}"]`);
+  for (const k of ["x", "y", "w", "h"]) {
+    const l = document.createElement("label");
+    l.innerHTML = `${{x: "X", y: "Y", w: "Width", h: "Height"}[k]}<input type="number" step="${k === "w" || k === "h" ? 2 : 1}">`;
+    const inp = l.querySelector("input"); inp.dataset.el = n; inp.dataset.k = k;
+    inp.onchange = () => {
+      let v = +inp.value; if (!isFinite(v)) return;
+      const e = S.hud[n], ar = HUD_EL[n].ar;
+      if (k === "w" || k === "h") { v = even(v); e[k] = v; if (ar) { if (k === "w") e.h = even(v / ar); else e.w = even(v * ar); } }
+      else e[k] = Math.round(v);
+      changed();
+    };
+    g.appendChild(l);
+  }
+}
+$("hudOn").onchange = e => { S.hud.enabled = e.target.checked; changed(); };
+for (const n of ["map", "adi", "data"]) $(n + "On").onchange = e => { S.hud[n].on = e.target.checked; changed(); };
+$("mapScale").onchange = e => { S.hud.map.scale = Math.min(500, Math.max(0.5, +e.target.value || 5)); changed(); };
+$("mapOrient").onchange = e => { S.hud.map.orient = e.target.value; changed(); };
+$("mapBase").onchange = e => { S.hud.map.basemap = e.target.value; changed(); };
+$("pastColor").oninput = e => { S.hud.map.pastColor = e.target.value; changed(); };
+$("futureColor").oninput = e => { S.hud.map.futureColor = e.target.value; changed(); };
+$("autoSync").onclick = async () => {
+  const btn = $("autoSync"), msg = $("autoSyncMsg");
+  btn.disabled = true; msg.textContent = "Analyzing the video… (about a minute the first time)";
+  try {
+    const r = await fetch("/api/autosync", {method: "POST", body: JSON.stringify({yaw: S.main.yaw})});
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error);
+    if (j.confident) {
+      S.hud.offset = j.offset; S.hud.syncedTrack = TRACK && TRACK.start; changed();
+      msg.textContent = `Synced: ${j.offset >= 0 ? "+" : ""}${j.offset} s (match ${Math.round(j.corr * 100)}%)`;
+    } else {
+      msg.innerHTML = `<span class="warn">Best guess ${j.offset >= 0 ? "+" : ""}${j.offset} s, but the match is weak (${Math.round(j.corr * 100)}%). Not applied — try aiming the main view straight ahead, or sync by hand.</span>`;
+    }
+  } catch (e) { msg.innerHTML = `<span class="warn">${e.message}</span>`; }
+  finally { btn.disabled = false; syncHudUI(); }
+};
+$("hudOffset").onchange = e => { S.hud.offset = +e.target.value || 0; changed(); };
+for (const b of document.querySelectorAll("[data-off]")) b.onclick = () => { S.hud.offset = Math.round((S.hud.offset + +b.dataset.off) * 10) / 10; changed(); };
+$("alignStart").onclick = () => { if (!TRACK) return; S.hud.offset = Math.round((TRACK.start - (vStart() + vid.currentTime)) * 10) / 10; changed(); };
+$("offReset").onclick = () => { S.hud.offset = 0; changed(); };
+$("kmlBtn").onclick = () => $("kmlFile").click();
+$("kmlFile").onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  $("kmlName").textContent = "Loading " + f.name + "…";
+  try {
+    const r = await fetch("/api/kml", {method: "POST", headers: {"X-Filename": f.name.replace(/[^\x20-\x7e]/g, "_")}, body: await f.arrayBuffer()});
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error);
+    TRACK = j.track; S.hud.enabled = true; changed();
+    if (TRACK.hasAttitude) $("autoSync").click();   // a new track always needs syncing
+  } catch (err) { $("kmlName").textContent = err.message; }
+  e.target.value = "";
+};
+
+function syncHudUI() {
+  const H = S.hud, on = !!TRACK;
+  $("hudOn").checked = H.enabled; $("hudOn").disabled = !on;
+  for (const n of ["map", "adi", "data"]) $(n + "On").checked = H[n].on;
+  $("mapScale").value = H.map.scale; $("mapOrient").value = H.map.orient; $("mapBase").value = H.map.basemap;
+  $("pastColor").value = H.map.pastColor; $("futureColor").value = H.map.futureColor;
+  if (document.activeElement !== $("hudOffset")) $("hudOffset").value = H.offset;
+  for (const inp of document.querySelectorAll("[data-rect] input")) if (document.activeElement !== inp) inp.value = Math.round(H[inp.dataset.el][inp.dataset.k]);
+  for (const el of document.querySelectorAll("#hudCard .sub input, #hudCard .sub select, #hudCard .sub button")) el.disabled = !on;
+  if (!TRACK) {
+    $("kmlName").textContent = "No track loaded";
+    $("trackInfo").innerHTML = "Load a flight/GPS track recorded during the video: <b>KML</b> (ForeFlight: Track Logs → share → KML; Garmin Pilot, Sentry, Stratux…), <b>GPX</b> (any GPS logger or phone app) or <b>CSV</b> (time, lat, lon columns; altitude, speed, pitch, bank optional).";
+  } else {
+    $("kmlName").textContent = TRACK.name || "track.kml";
+    const bits = [TRACK.tail, TRACK.title, TRACK.device].filter(Boolean).join(" · ");
+    let html = (bits ? bits + "<br>" : "") + `${TRACK.points.toLocaleString()} points · ${utcStr(TRACK.start, true)} → ${utcStr(TRACK.end)}`;
+    if (!TRACK.hasAttitude) html += `<br><span class="warn">This track has no pitch/bank data (needs an AHRS source such as a Sentry or Stratux). The attitude indicator will show NO ATTITUDE.</span>`;
+    const v0 = vStart() + H.offset, v1 = v0 + (INFO ? INFO.duration : 0);
+    if (v1 < TRACK.start || v0 > TRACK.end) {
+      html += `<br><span class="warn">The video (${utcStr(v0, true)} → ${utcStr(v1)}) doesn't overlap this track in time. Check this is the right flight, or use “Track start = playhead”.</span>`;
+    } else if (v0 < TRACK.start - 5 || v1 > TRACK.end + 5) {
+      html += `<br><span class="note">Parts of the video fall outside the track; the overlay shows NO DATA there.</span>`;
+    }
+    $("trackInfo").innerHTML = html;
+  }
+  syncSyncInfo();
+}
+function syncSyncInfo() {
+  if (!TRACK) { $("syncInfo").textContent = ""; return; }
+  const src = VIDEO_START != null ? "camera clock" : "track start (camera time unknown)";
+  $("syncInfo").textContent = `Video starts ${utcStr(vStart(), true)} (${src}) · playhead = ${utcStr(vStart() + S.hud.offset + vid.currentTime)} on the track`;
+}
+function showReadout(d) {
+  if (!d) { $("readout").innerHTML = ""; return; }
+  const b = d.bank, p = d.pitch, na = "—";
+  const cell = (lab, val) => `<div><span>${lab}</span><b>${val}</b></div>`;
+  $("readout").innerHTML = !d.valid ? `<div style="grid-column:span 4" class="warn">Playhead is outside the track — NO DATA</div>` :
+    cell("GS", Math.round(d.gs) + " kt") + cell("ALT", Math.round(d.alt).toLocaleString() + " ft") +
+    cell("Bank", b == null ? na : (Math.abs(b) < 0.5 ? "0°" : (b > 0 ? "R " : "L ") + Math.abs(b).toFixed(0) + "°")) +
+    cell("Pitch", p == null ? na : (p > 0 ? "+" : "") + p.toFixed(1) + "°");
+}
+
+let hudBmp = null, hudLayout = null, hudBusy = false, hudAgain = false;
+function drawHud() {
+  const c = $("hud2d"), ctx = c.getContext("2d");
+  ctx.clearRect(0, 0, c.width, c.height);
+  if (!hudBmp || !hudActive() || !hudLayout) return;
+  const k = scaleK;
+  for (const [name, ay, w, h] of hudLayout) {
+    const e = S.hud[name]; if (!e.on) continue;
+    const dw = name === "adi" ? Math.min(e.w, e.h) : e.w, dh = name === "adi" ? dw : e.h;
+    ctx.drawImage(hudBmp, 0, ay, w, h, e.x * k, e.y * k, dw * k, dh * k);
+  }
+}
+async function requestHud() {
+  if (!hudActive()) { hudBmp = null; drawHud(); showReadout(null); return; }
+  if (hudBusy) { hudAgain = true; return; }
+  hudBusy = true; hudAgain = false;
+  try {
+    const r = await fetch("/api/hud", {method: "POST", body: JSON.stringify({...renderParams(), time: vid.currentTime})});
+    if (r.ok) {
+      hudLayout = JSON.parse(r.headers.get("X-Layout"));
+      const d = JSON.parse(r.headers.get("X-Data")), note = JSON.parse(r.headers.get("X-Note") || '""');
+      const bmp = await createImageBitmap(await r.blob());
+      if (hudBmp && hudBmp.close) hudBmp.close();
+      hudBmp = bmp; drawHud(); showReadout(d);
+      $("hudNote").textContent = note;
+    } else {
+      $("hudNote").textContent = (await r.json()).error || "";
+    }
+  } catch (e) { /* server busy or offline */ }
+  finally {
+    hudBusy = false;
+    if (hudAgain || !vid.paused) requestAnimationFrame(() => requestHud());
+  }
+}
+
+/* ---------------- boot ---------------- */
+/* ---------------- projects ---------------- */
+let NP = {insv: null, lrv: null}, CUR_PROJECT = null;
+const esc = t => String(t).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const ago = t => { const d = (Date.now() / 1000 - t); return d < 90 ? "just now" : d < 3600 ? Math.round(d / 60) + " min ago" : d < 86400 ? Math.round(d / 3600) + " h ago" : new Date(t * 1000).toLocaleDateString(); };
+async function postJ(url, body) { const r = await fetch(url, {method: "POST", body: JSON.stringify(body || {})}); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || r.statusText); return j; }
+function renderProjects(list) {
+  const box = $("projList");
+  if (!list.length) { box.innerHTML = `<div class="note">No projects yet. Create one below.</div>`; return; }
+  box.innerHTML = list.map(p => `<div class="proj ${CUR_PROJECT && CUR_PROJECT.id === p.id ? "cur" : ""}" data-id="${esc(p.id)}">
+      <div class="grow"><div class="pn">${esc(p.name)}${CUR_PROJECT && CUR_PROJECT.id === p.id ? ' <span class="note">(open)</span>' : ""}</div>
+      <div class="pm">${esc(p.insv.split(/[\\/]/).pop())} · ${p.model ? esc(p.model) + " · " : ""}${p.duration ? fmt(p.duration, false) + " · " : ""}edited ${ago(p.updated)}${p.hasTrack ? " · flight track" : ""}${p.fit ? " · own lens alignment" : ""}${projStatus(p)}</div></div>
+      ${!p.lrv && !(p.previewJob && !p.previewJob.error) ? '<button class="sm" data-act="preview">Make preview</button>' : ""}
+      ${CUR_PROJECT && CUR_PROJECT.id === p.id ? '<button class="sm" data-act="align" title="Measure how this camera\'s two lenses line up, from its own footage. Use it if the seam looks off (cameras other than the X4). Takes a few minutes.">Align lenses</button>' : ""}
+      <button class="sm" data-act="open" ${p.online ? "" : "disabled"}>Open</button>
+      <button class="sm" data-act="rename">Rename</button>
+      <button class="sm danger" data-act="delete">Delete</button></div>`).join("");
+}
+function projStatus(p) {
+  const j = p.previewJob;
+  if (j && j.error) return ` · <span class="warn">making the preview failed: ${esc(j.error.slice(-200))}</span>`;
+  if (j && j.progress < 1) return ` · <span class="warn">making preview… ${Math.round(j.progress * 100)}%</span>`;
+  if (!p.lrv) return ' · <span class="warn">no preview yet</span>';
+  if (!p.online) return ' · <span class="warn">camera file not found (memory card / drive not connected?)</span>';
+  return "";
+}
+let projTimer = null, ALIGN = null;
+async function showProjects(required) {
+  const st = await (await fetch("/api/state")).json();
+  CUR_PROJECT = st.project; renderProjects(st.projects);
+  ALIGN = st.align;
+  if (ALIGN && ALIGN.status === "running") $("npErr").textContent = "Aligning lenses… " + (ALIGN.log || "");
+  else if (ALIGN && ALIGN.status === "error") $("npErr").textContent = "Lens alignment failed: " + ALIGN.error;
+  else if (ALIGN && ALIGN.status === "done" && $("npErr").textContent.startsWith("Aligning")) { location.reload(); return; }
+  clearTimeout(projTimer);   // keep progress fresh while a preview is being made or lenses are aligned
+  if (st.projects.some(p => p.previewJob && !p.previewJob.error && p.previewJob.progress < 1) || (ALIGN && ALIGN.status === "running"))
+    projTimer = setTimeout(() => { if ($("projDlg").open) showProjects(required); }, 1500);
+  $("projClose").hidden = !!required;
+  const dlg = $("projDlg"); if (!dlg.open) dlg.showModal();
+  dlg.oncancel = e => { if (required) e.preventDefault(); };
+}
+$("projBtn").onclick = () => showProjects(false);
+$("projClose").onclick = () => $("projDlg").close();
+$("projList").onclick = async e => {
+  const b = e.target.closest("button[data-act]"); if (!b) return;
+  const id = b.closest(".proj").dataset.id, name = b.closest(".proj").querySelector(".pn").textContent.replace(" (open)", "");
+  try {
+    if (b.dataset.act === "preview") { await postJ("/api/projects/preview", {id}); showProjects(!CUR_PROJECT); }
+    else if (b.dataset.act === "align") { await postJ("/api/align", {}); $("npErr").textContent = "Aligning lenses…"; showProjects(!CUR_PROJECT); }
+    else if (b.dataset.act === "open") { b.disabled = true; b.textContent = "Opening…"; await postJ("/api/projects/open", {id}); location.reload(); }
+    else if (b.dataset.act === "rename") { const n = prompt("Rename project", name); if (n && n.trim()) { await postJ("/api/projects/rename", {id, name: n.trim()}); showProjects(!CUR_PROJECT); if (CUR_PROJECT && CUR_PROJECT.id === id) $("projName").textContent = n.trim(); } }
+    else if (b.dataset.act === "delete") { if (confirm(`Delete project “${name}”? Its settings and flight track are removed; the camera's video files are not touched.`)) { await postJ("/api/projects/delete", {id}); if (CUR_PROJECT && CUR_PROJECT.id === id) location.reload(); else showProjects(false); } }
+  } catch (err) { alert(err.message); showProjects(!CUR_PROJECT); }
+};
+async function pickPath(kind, from) {
+  const j = await postJ("/api/pick", {kind, from: from || ""});
+  if (j.unsupported) throw new Error(j.error);
+  return j;
+}
+$("npInsvBtn").onclick = async () => {
+  $("npErr").textContent = ""; $("npInsvBtn").disabled = true; $("npInsvBtn").textContent = "Waiting for file dialog…";
+  try {
+    const j = await pickPath("insv", $("npInsv").value.trim());
+    if (j.path) {
+      $("npInsv").value = j.path;
+      $("npLrv").value = j.lrv || "";
+      if (!j.lrv) $("npLrv").placeholder = "No .lrv found next to it — choose one, or leave empty to have a preview made";
+      if (!$("npName").value.trim()) $("npName").value = j.path.split(/[\\/]/).pop().replace(/\.insv$/i, "");
+    }
+  } catch (err) { $("npErr").textContent = err.message; $("npInsv").focus(); }
+  finally { $("npInsvBtn").disabled = false; $("npInsvBtn").textContent = "Choose .insv…"; }
+};
+$("npLrvBtn").onclick = async () => {
+  $("npErr").textContent = "";
+  try { const j = await pickPath("lrv", $("npInsv").value.trim()); if (j.path) $("npLrv").value = j.path; }
+  catch (err) { $("npErr").textContent = err.message; $("npLrv").focus(); }
+};
+$("npCreate").onclick = async () => {
+  $("npErr").textContent = "";
+  const insv = $("npInsv").value.trim(), lrv = $("npLrv").value.trim();
+  if (!insv) { $("npErr").textContent = "Choose the camera recording (.insv) first."; return; }
+  const b = $("npCreate"); b.disabled = true; b.textContent = "Checking the files…";
+  try {
+    const j = await postJ("/api/projects/create", {name: $("npName").value, insv, lrv: lrv || null});
+    if (j.opened) { location.reload(); return; }
+    b.disabled = false; b.textContent = "Create project";
+    $("npName").value = $("npInsv").value = $("npLrv").value = "";
+    $("npErr").textContent = "Project created. Making its preview — you can open it when that's done.";
+    showProjects(!CUR_PROJECT);
+  } catch (err) { $("npErr").textContent = err.message; b.disabled = false; b.textContent = "Create project"; }
+};
+$("outDirBtn").onclick = async () => {
+  try {
+    let path;
+    try { const j = await pickPath("outdir", $("outDir").textContent); path = j.path; }
+    catch (err) { path = prompt("Folder to save rendered videos in:", $("outDir").textContent); }
+    if (!path) return;
+    const j = await postJ("/api/prefs", {outdir: path});
+    $("outDir").textContent = j.prefs.outdir; $("outDir").title = j.prefs.outdir;
+  } catch (err) { alert(err.message); }
+};
+
+(async function boot() {
+  const st = await (await fetch("/api/state")).json();
+  CUR_PROJECT = st.project;
+  if (!st.project) { $("projName").textContent = "No project open"; showProjects(true); return; }
+  $("projName").textContent = st.project.name;
+  document.title = st.project.name + " · 360 Views";
+  INFO = st.info; TRACK = st.track; VIDEO_START = st.videoStart; PX_PER_DEG = st.pxPerDeg || 0;
+  setLensUniforms(st.lens);
+  vid.src = st.videoUrl || "/video";   // separate port, so the video can't use up the page's connections
+  if (st.stabError) { $("stabOn").disabled = true; $("stabNote").innerHTML = `<span class="warn">${st.stabError}</span>`; }
+  if (st.hudError) { $("hudErr").hidden = false; $("hudErr").textContent = st.hudError; $("kmlBtn").disabled = true; }
+  $("fileName").textContent = `${st.model} · ${st.master.split("/").pop()}   (previewing the camera's ${st.preview.split("/").pop()})`;
+  $("fileName").title = "Renders read " + st.master + " · output folder " + st.outdir;
+  $("outDir").textContent = st.outdir; $("outDir").title = st.outdir;
+  if (st.encoders) {
+    const sw = Object.values(st.encoders).some(e => e.startsWith("lib"));
+    $("encNote").textContent = "Encoders: " + st.encoders.h264 + ", " + st.encoders.hevc + (sw ? " — no hardware encoder found, so renders use the CPU (slower)." : "");
+  }
+  DEFAULTS.chunks = (st.prefs && st.prefs.chunks) || DEFAULTS.chunks; S.chunks = DEFAULTS.chunks;
+  $("scrub").max = INFO.duration;
+  if (st.settings) {
+    const s = st.settings;
+    for (const k of ["output", "main", "insetView", "inset"]) S[k] = {...DEFAULTS[k], ...(s[k] || {})};
+    const h = s.hud || {};
+    S.hud = {...DEFAULTS.hud, ...h};
+    for (const n in HUD_EL) S.hud[n] = {...DEFAULTS.hud[n], ...(h[n] || {})};
+    S.in = +s.in || 0; S.out = s.out == null ? null : +s.out;
+    S.stab = {...DEFAULTS.stab, ...(s.stab || {})};
+    S.out360 = {...DEFAULTS.out360, ...(s.out360 || {})};
+    S.chunks = Math.min(8, Math.max(1, Math.round(+s.chunks || DEFAULTS.chunks)));
+  }
+  layout(); changed(); syncTime(); poll(); requestAnimationFrame(loop);
+  if (st.stabError) S.stab.on = false; else loadStab();
+  // a loaded track that has never been synced: sync it now instead of showing data at the wrong moments
+  if (TRACK && TRACK.hasAttitude && S.hud.syncedTrack !== TRACK.start) $("autoSync").click();
+})();
+</script>
+</body>
+</html>
