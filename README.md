@@ -118,3 +118,9 @@ views360/
 - **Another camera family:** write a class with the same interface as `camera.Camera` (described in its docstring) and add it to `CAMERA_TYPES`.
 - **Another track format:** add a loader to `track.Track`.
 - **Another instrument:** add a renderer in `hud.py` and register it in `HudEngine`.
+
+## Notices
+
+This project was created with AI assistance.
+
+Licensed under the Apache License 2.0 (see [LICENSE](LICENSE)). Map data © OpenStreetMap contributors.
